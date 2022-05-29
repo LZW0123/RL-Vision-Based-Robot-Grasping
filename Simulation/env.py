@@ -1,7 +1,9 @@
 import sim
 import numpy as np
 import math
-from math import cos,sin,radians
+from math import cos,sin,radians,degrees
+
+np.set_printoptions(suppress = True)
 
 class Dobot:
 
@@ -140,7 +142,7 @@ class Kinematics:
         DH_theta=np.array(joints_angle).reshape((1,4))
         DH_Parameter_Table=np.concatenate((self.DH_alpha,self.DH_a,self.DH_d,DH_theta),axis=0)
         DH_mat = DH_Parameter_Table.T
-        print(DH_mat)
+        # print(DH_mat)
         DOF4_mat = np.identity(4)
         for i in range(0,4):
             temp_mat = self.T_mat_DH(DH_mat[i,0],DH_mat[i,1],DH_mat[i,2],DH_mat[i,3])
@@ -155,12 +157,45 @@ class Kinematics:
         return [x,y,z]
 
     def InverseKinematics(self,ee_pos):
-        joints_angles=1
+        px,py,pz=ee_pos[0],ee_pos[1],ee_pos[2]
+        a2=0.135
+        a3=0.2067
+        joints_angles=np.zeros((1,4))
+        theta1=math.atan2(py,px)
+
+        c1=math.cos(theta1)
+        s1=math.sin(theta1)
+        c3=(pz**2+(px*c1+py*s1)**2-a2**2-a3**2)/(2*a2*a3)
+        if (1-c3**2)<0:
+            print("error!,s3 little problem!")
+            s3=0
+        else:
+            s3=math.sqrt(1-c3**2)
+        theta3=math.atan2(s3,c3)  # 因为符号有正负，所以有两种解,如果是sin有符号，那么一般来说不用管
+
+        c2=(pz*a3*s3+(px*c1+py*s1)*(a2+a3*c3))/((a3*s3)**2+(a2+a3*c3)**2)
+        if 1-c2**2<0:
+            print("error!,s2 little problem!")
+            s2=0
+        else:
+            s2=math.sqrt(1-c2**2)
+        theta2=math.atan2(s2,c2)
+
+        theta4=0
+        joints_angles[0,0]=round(degrees(theta1),3)
+        joints_angles[0,1]=round(degrees(theta2),3)
+        joints_angles[0,2]=round(degrees(theta3),3)
+        joints_angles[0,3]=round(degrees(theta4),3)
+
         return joints_angles
 
 if __name__ == '__main__':
     # robot = Dobot()
     # robot.TestRobotRun(0,90)
     kinematics=Kinematics()
-    position=kinematics.ForwardKinematics([0,0,0,0])
+    position=kinematics.ForwardKinematics([0,50,0,0])
     print(position)
+    ee_pos=[0.2196405262298905, 1.6028017258992613e-17, 0.2617573862137548]
+    joints_angles=kinematics.InverseKinematics(ee_pos)
+    
+    print(joints_angles)
